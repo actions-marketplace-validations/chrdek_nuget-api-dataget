@@ -1,153 +1,73 @@
-# load-runner-info
-Load the information for the runners that are available for the organization or the repository, including status checks.
-Can be used to verify the amount of runners for a label is as expected.
+# nuget-api-dataget
+Return an xml or json response from NuGet Api (APIv2, v3) by using NuGet owner's name and stores the result in a predefined Gist in Base64 Data Format. More info is displayed in the 'Main Workflow File' example below.
 
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/devops-actions/load-runner-info/badge)](https://api.securityscorecards.dev/projects/github.com/devops-actions/load-runner-info)
-
-# Example
-Basic usage:
-``` yaml
-      - uses: devops-actions/load-runner-info@v1.0.6
-        id: load-runner-info-org
-        with: 
-          accessToken: ${{ secrets.access_token }}
-          organization: ${{ env.organization }}
-```
-Read the complete example for using the outputs as well.
 
 ## Inputs
 
 |Name|Type|Description|
 |---|---|---|
-|`organization`|string|The slug of the organization to load the runners from|
-|`repo`|string|The slug of the repo to load the runners from, `organization` required as well|
-|`accessToken`|string|The access token to use to connect to the GitHub API|
+|`ownerName`|string|The ownername of the nuget package registry to retrieve data from|
+|`isXmlResp`|string|In 'secrets' of the repository you intend to run this on, set only value of TRUE or FALSE|
+|`GIST_ID`|string|The ID of the predefined Gist to use when updating Gist content with the retrieved data|
+|`ACTION_TOKEN`|string|In 'secrets' of the repository you intend to run this on, the GitHub API Token|
 
-### Access token information
-To run this action at the **organization** level, the access token must have scope `admin:org` (PAT) or `org:Self-hosted runners` (GitHub App).
-To run this action at the **repository** level, the access token must have scope `owner:repo`
+<br/>
+
+### About - Access tokens
+To run this action the access token must have scope `admin:org` on PAT  or `owner:repo` access levels.
+
 
 ## Outputs
 
 |Name|Type|Description|
 |---|---|---|
-|`runners`|string|A JSON string with the runner information available|
-|`grouped`|string|A JSON string with the number of runner grouped by their labels, also indicating their status|
+|`Raw API v2 XML Nuget Entries Response`|string|A Base64-Encoded string of xml response for NuGet v2 API listed packages|
+|`Raw API v3 Json Nuget Entries Response`|string|A Base64-Encoded string of json response for NuGet v3 API listed packages|
 
-When there are so many runners the JSON gets to large to use, use the filebased outputs instead:
-|Name|Type|Description|
-|---|---|---|
-|`runners-file-location`|string|The path to the file with the runner information available|
-|`grouped-file-location`|string|The path to the file with the number of runners grouped by their labels, also indicating their status|
 
-Runners output example:
-``` json
-{
-    "total_count": 1,
-    "runners": [
-        {
-            "id": 2,
-            "name": "my-runner",
-            "os": "windows",
-            "status": "online",
-            "busy": false,
-            "labels": [
-                {
-                    "id": 1,
-                    "name": "self-hosted",
-                    "type": "read-only"
-                },
-                {
-                    "id": 2,
-                    "name": "Windows",
-                    "type": "read-only"
-                },
-                {
-                    "id": 3,
-                    "name": "X64",
-                    "type": "read-only"
-                }
-            ]
-        }
-    ]
-}
-```
+<br/><br/>
 
-Grouped output example:
-``` json
-[
-  { "name": "self-hosted", "counter": 1, "status": 1 },
-  { "name": "Windows", "counter": 1, "status": 1 },
-  { "name": "X64", "counter": 1, "status": 1 }
-]
-```
-##### Note: status indicates the number of the runners that is online for that label.   
+### __Note: The response requires a Gist for the response to be stored appropriately. Action is run at end of each week in the example.__
+
+
+<br/>
 
 
 
-# Full usage example
-Below is an example how I use this action to load the information on the available runners as well as test if there are enough runners online (see step `Test runner info`).
+## How it works
+Main Workflow File:
 ``` yaml
+name: Weekly Content Updates
+
+on:
+  schedule:
+  - cron: "0 14 * * 0"
+
 jobs:
-  test-from-organization:
+  weeklycontentupdate:
     runs-on: ubuntu-latest
     steps:
-      - name: Get access token
-        id: get_workflow_token
-        uses: peter-murray/workflow-application-token-action@v2.1.0
-        with:
-          application_id: ${{ secrets.APPLICATION_ID }}
-          application_private_key: ${{ secrets.APPLICATION_PRIVATE_KEY }}
-          
-      - uses: devops-actions/load-runner-info@v1.0.6
-        id: load-runner-info-org
-        with: 
-          accessToken: ${{ steps.get_workflow_token.outputs.token }}
-          organization: ${{ env.organization }}
-
-      - name: Upload result file as artefact for inspection
-        uses: actions/upload-artifact@v2
-        with: 
-          name: runners-organization-${{ env.organization }}
-          path: 
-            - ${{ steps.load-runner-info-org.outputs.runners-file-location }}
-            - ${{ steps.load-runner-info-org.outputs.grouped-file-location }}
-
-      - uses: actions/github-script@v5
-        name: Test runner info
-        with: 
-          script: |
-            const info = JSON.parse(`${{ steps.load-runner-info-org.outputs.runners-file-location }}`)
-            if (info.length == 0) {
-              core.error('No runners found')            
-              return
-            }
-            
-            console.log(`Found [${info.runners.length}] runner(s)`)
-            for (let num = 0; num < info.runners.length; num++) {
-              const runner = info.runners[num]
-              console.log(`- name: [${runner.name}]`)
-            }
-
-            console.log(``)
-
-            const grouped = JSON.parse(`${{ steps.load-runner-info-org.outputs.grouped-file-location }}`)
-            console.log(`Found ${grouped.length} runner label(s)`)
-            for (let num = 0; num < grouped.length; num++) {
-              const group = grouped[num]
-              console.log(`- label: [${group.name}], runner with this label: [${group.counter}] with [${group.status}] online runners`)
-            }
-
-            // example of a test you can do on the amount of runners online with this label
-            const selfHosted = grouped.find(group => group.name === 'self-hosted')
-            if (selfHosted.status > 10) {
-              core.error(`Too many runners with label "self-hosted" found`)
-              return
-            }
-
-            // example of a test you can do on the amount of runners online with this label
-            if (selfHosted.status < selfHosted.counter) {
-              core.error(`There are [${selfHosted.counter - selfHosted.status}] runners offline`)
-              return
-            }
+    - name: Set updated content (XML, JSON)
+      id: setUpdatedContent
+      env:
+        ownerName: your_nuget_username
+        isXmlResp: ${{ secrets.IS_XML }}
+      run: |
+        if [ ${{ env.isXmlResp }} == 'TRUE' ]; then
+          echo "NUG_RESPONSE<<EOF" >> $GITHUB_ENV
+          echo $(curl --no-progress-meter 'https://www.nuget.org/api/v2/Search()?$filter=IsLatestVersion&searchTerm=%27owner%3A${{ env.ownerName }}%27&targetFramework=%27%27&includePrerelease=false&$skip=0&semVerLevel=2.0.0' | base64) | sed 's/ //g' >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+        else
+          echo "NUG_RESPONSE<<EOF" >> $GITHUB_ENV
+          echo $(curl --no-progress-meter 'https://api-v2v3search-0.nuget.org/query?q=${{ env.ownerName }}&prerelease=false' | base64) | sed 's/ //g' >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+        fi
+    - name: Update accesible Gists
+      id: updateGists
+      env:
+        GIST_ID: your_predefined_gist_id
+        ACTION_TOKEN: ${{ secrets.GH_ACTION }}
+        RESPONSE: "${{ env.NUG_RESPONSE }}"
+      run: |
+        curl --no-progress-meter  -L -X PATCH -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $ACTION_TOKEN" -H "X-Github-Api-Version: 2022-11-28" https://api.github.com/gists/${{ env.GIST_ID }} -d '{"description":"rssdata","files":{"test_gst.txt":{"content":"${{ env.RESPONSE }}" }}}'
 ```

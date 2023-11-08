@@ -1,40 +1,31 @@
-name: tf-siesta
-author: Typeform
-description: Github Action checking if a Google Calendar it is busy or not, so you can schedule a Siesta.
+name: nuget-api-dataget
+author: chrdek
+description: Github Action returning an xml or json response from NuGet Api (APIv2, v3) by using NuGet owner's name and stores the result in a predefined Gist in Base64.
 inputs:
-  google-credentials:
-    description: string, contents of credentials.json
+  ownerName:
+    description: string, nuget api registry username
     required: true
-  google-token:
-    description: string, contents of token.json
+  isXmlResp:
+    description: string, can be only TRUE or FALSE
     required: true
-  google-calendar-id:
-    description: string, the calendar id to check. If not specified, will take the primary calendar of that account
-    required: false
-  custom-calendar-busy-message:
-    description: string, in case the calendar is busy with events at the given timeframe, this message will be displayed in the github error
-    required: false
-  custom-calendar-not-busy-message:
-    description: string, in case the calendar is not busy with events at the given timeframe, this message will be displayed in the console log
-    required: false
-  fail-if-busy:
-    description: boolean, controls if the build should fail if the calendar is busy. Needs hard-failure in true. default is true
-    required: false
-  hard-failure:
-    description: boolean, if true, fails the build on any error. If false, throws an warning instead.
-    required: false
-  minutes-interval:
-    description: the interval of time, starting from the moment of execution, on which to check that the calendar is busy. Default 0.1 seconds.
-    required: false
+  GIST_ID:
+    description: string, identifier of the Gist that was created to store the xml or json response in
+    required: true
+  ACTION_TOKEN:
+    description: string, PAT token to be used in Github API for updating the Gist
+    required: true
+
 
 outputs:
-   calendar-busy:
-     description: a boolean, true if the calendar is busy with events, false if the calendar is not busy with events
+   xml:
+     description: raw xml response encoded as base64
+   json:
+     description: raw json response encoded as base64
 
 runs:
-  using: 'node12'
-  main: 'dist/index.js'
+  using: 'ubuntu-latest'
+  main: '.github/workflows/nugetapi_update.yml'
 branding:
   icon: 'watch'
-  color: 'green'
+  color: 'blue'
 

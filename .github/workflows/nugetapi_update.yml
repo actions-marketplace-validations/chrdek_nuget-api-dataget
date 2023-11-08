@@ -1,7 +1,8 @@
 name: Weekly Content Updates
 
 on:
-  workflow_dispatch
+  schedule:
+  - cron: "0 14 * * 0"
 
 jobs:
   weeklycontentupdate:
@@ -10,7 +11,7 @@ jobs:
     - name: Set updated content (XML, JSON)
       id: setUpdatedContent
       env:
-        ownerName: chrkqedek
+        ownerName: your_nuget_username
         isXmlResp: ${{ secrets.IS_XML }}
       run: |
         if [ ${{ env.isXmlResp }} == 'TRUE' ]; then
@@ -25,7 +26,7 @@ jobs:
     - name: Update accesible Gists
       id: updateGists
       env:
-        GIST_ID: 14382e201fb6be671a33af3feae2c58d
+        GIST_ID: your_predefined_gist_id
         ACTION_TOKEN: ${{ secrets.GH_ACTION }}
         RESPONSE: "${{ env.NUG_RESPONSE }}"
       run: |
