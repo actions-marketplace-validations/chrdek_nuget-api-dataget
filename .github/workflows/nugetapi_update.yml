@@ -1,0 +1,32 @@
+name: Weekly Content Updates
+
+on:
+  workflow_dispatch
+
+jobs:
+  weeklycontentupdate:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set updated content (XML, JSON)
+      id: setUpdatedContent
+      env:
+        ownerName: chrkqedek
+        isXmlResp: ${{ secrets.IS_XML }}
+      run: |
+        if [ ${{ env.isXmlResp }} == 'TRUE' ]; then
+          echo "NUG_RESPONSE<<EOF" >> $GITHUB_ENV
+          echo $(curl --no-progress-meter 'https://www.nuget.org/api/v2/Search()?$filter=IsLatestVersion&searchTerm=%27owner%3A${{ env.ownerName }}%27&targetFramework=%27%27&includePrerelease=false&$skip=0&semVerLevel=2.0.0' | base64) | sed 's/ //g' >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+        else
+          echo "NUG_RESPONSE<<EOF" >> $GITHUB_ENV
+          echo $(curl --no-progress-meter 'https://api-v2v3search-0.nuget.org/query?q=${{ env.ownerName }}&prerelease=false' | base64) | sed 's/ //g' >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+        fi
+    - name: Update accesible Gists
+      id: updateGists
+      env:
+        GIST_ID: 14382e201fb6be671a33af3feae2c58d
+        ACTION_TOKEN: ${{ secrets.GH_ACTION }}
+        RESPONSE: "${{ env.NUG_RESPONSE }}"
+      run: |
+        curl --no-progress-meter  -L -X PATCH -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $ACTION_TOKEN" -H "X-Github-Api-Version: 2022-11-28" https://api.github.com/gists/${{ env.GIST_ID }} -d '{"description":"rssdata","files":{"test_gst.txt":{"content":"${{ env.RESPONSE }}" }}}'
