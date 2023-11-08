@@ -1,6 +1,6 @@
 name: nuget-api-dataget
 author: chrdek
-description: Github Action returning an xml or json response from NuGet Api (APIv2, v3) by using NuGet owner's name and stores the result in a predefined Gist in Base64.
+description: Github Action returning XML or JSON NuGet Api Response per owner name as base64 gist.
 inputs:
   ownerName:
     description: string, nuget api registry username
